@@ -22,10 +22,13 @@
   "permissions": [
     "activeTab",
     "scripting",
-    "downloads"
+    "downloads",
+    "contextMenus",
+    "notifications"
   ],
   "host_permissions": [
-    "https://any2md.yueban.fan/*"
+    "https://any2md.yueban.fan/*",
+    "http://localhost:8787/*"
   ],
   "background": {
     "service_worker": "service-worker.js",
