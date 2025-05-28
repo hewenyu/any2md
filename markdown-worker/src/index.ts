@@ -1,11 +1,12 @@
 import { Hono } from "hono";
-import TurndownService from 'turndown'; // Ensure turndown is installed
+import { NodeHtmlMarkdown } from 'node-html-markdown'; // 使用 node-html-markdown 替代 turndown
 
 // Start a Hono app
 const app = new Hono<{ Bindings: Env }>();
 
-// Initialize Turndown service
-const turndownService = new TurndownService();
+// 初始化 NodeHtmlMarkdown 转换器
+// 可以根据需要配置选项: https://github.com/crosstype/node-html-markdown#configuration
+const nhm = new NodeHtmlMarkdown();
 
 // Add the /ping route
 app.get("/ping", (c) => c.text("pong"));
@@ -22,8 +23,8 @@ app.post("/api/convert", async (c) => {
 		}
 		const { html } = body;
 
-		// Convert HTML to Markdown
-		const markdown = turndownService.turndown(html);
+		// 将 HTML 转换为 Markdown
+		const markdown = nhm.translate(html);
 
 		return c.text(markdown, 200, {
 			'Content-Type': 'text/markdown; charset=utf-8'
@@ -34,7 +35,6 @@ app.post("/api/convert", async (c) => {
 			return c.json({ error: "Invalid JSON in request body" }, 400);
 		}
 		console.error('Error in /api/convert:', e);
-		// turndown itself might throw errors for very malformed HTML, though it's generally robust.
 		return c.json({ error: "Internal server error during Markdown conversion" }, 500);
 	}
 });
