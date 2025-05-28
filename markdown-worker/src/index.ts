@@ -1,29 +1,36 @@
-import { fromHono } from "chanfana";
 import { Hono } from "hono";
-import { TaskCreate } from "./endpoints/taskCreate";
-import { TaskDelete } from "./endpoints/taskDelete";
-import { TaskFetch } from "./endpoints/taskFetch";
-import { TaskList } from "./endpoints/taskList";
 
 // Start a Hono app
 const app = new Hono<{ Bindings: Env }>();
 
-// Setup OpenAPI registry
-const openapi = fromHono(app, {
-	docs_url: "/",
-});
-
-// Register OpenAPI endpoints
-openapi.get("/api/tasks", TaskList);
-openapi.post("/api/tasks", TaskCreate);
-openapi.get("/api/tasks/:taskSlug", TaskFetch);
-openapi.delete("/api/tasks/:taskSlug", TaskDelete);
-
-// You may also register routes for non OpenAPI directly on Hono
-// app.get('/test', (c) => c.text('Hono!'))
-
 // Add the /ping route
 app.get("/ping", (c) => c.text("pong"));
+
+// Endpoint for /api/convert
+app.post("/api/convert", async (c) => {
+	// Check if the request method is POST
+	if (c.req.method !== "POST") {
+		return c.json({ error: "Expected POST request" }, 405);
+	}
+
+	try {
+		const body = await c.req.json();
+		if (!body || typeof body.url !== 'string') {
+			return c.json({ error: "Missing or invalid URL parameter" }, 400);
+		}
+		const { url } = body;
+
+		// Placeholder for now, will be replaced with actual HTML fetching and conversion
+		return c.json({ message: "URL received", url: url });
+
+	} catch (e: any) {
+		if (e instanceof SyntaxError) { // JSON parsing error
+			return c.json({ error: "Invalid JSON in request body" }, 400);
+		}
+		console.error('Error in /api/convert:', e);
+		return c.json({ error: "Internal server error" }, 500);
+	}
+});
 
 // Export the Hono app
 export default app;
