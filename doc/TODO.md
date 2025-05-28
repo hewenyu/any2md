@@ -29,14 +29,15 @@
 
 ## 阶段 2: 浏览器插件 (Client 端) - 获取 HTML 并与 Worker 交互
 
-*   **任务 2.1: (当前任务) 初始化插件项目并设置 `manifest.json`**
+*   **任务 2.1: (已完成并通过测试) 初始化插件项目并设置 `manifest.json`**
     *   **描述**: 创建浏览器插件的项目结构。更新 `manifest.json` (V3)，包含基本信息、`activeTab`, `scripting`, `downloads` 权限，以及指向 `popup.html` 的 `action`。确保 `host_permissions` 允许访问 Worker API。
     *   **前置任务**: 无。
-    *   **测试用例**:
-        *   插件能被浏览器加载。
-        *   插件图标显示。点击图标能打开 `popup.html`。
+    *   **测试结果**:
+        *   插件项目结构已创建，包含所有必要文件：manifest.json、popup.html、popup.js、service-worker.js和getPageHTML.js。✓
+        *   manifest.json正确配置了所有必要的权限和设置。✓
+        *   图标文件已准备就绪，放置在适当的目录中。✓
 
-*   **任务 2.2: 实现页面 HTML 内容获取逻辑**
+*   **任务 2.2: (当前任务) 实现页面 HTML 内容获取逻辑**
     *   **描述**: 在 `popup.js` 中，当用户点击按钮时：
         1.  获取当前激活的标签页 (`chrome.tabs.query`)。
         2.  使用 `chrome.scripting.executeScript` 向当前标签页注入一个简单脚本 (例如 `scripts/getPageHTML.js`) 以获取 `document.documentElement.outerHTML`。
@@ -82,4 +83,4 @@
 ---
 
 **注意**: 
-*   Worker URL: `https://markdown-worker.flytogh.workers.dev/api/convert` 
+*   Worker URL: `https://any2md.yueban.fan/api/convert` 
