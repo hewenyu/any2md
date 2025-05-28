@@ -19,123 +19,115 @@
     ```bash
     wrangler login
     ```
-2.  创建一个新的 Worker 项目 (选择 "Hello World" 模板):
+2.  创建一个新的 Worker 项目 (如果尚未创建):
     ```bash
-    wrangler init my-markdown-worker
-    cd my-markdown-worker
+    # wrangler init <your-worker-name>
+    # cd <your-worker-name>
     ```
-    这会创建一个包含基本配置 (`wrangler.toml`) 和入口文件 (`src/index.js` 或 `src/index.ts`) 的项目结构。
+    对于本项目，我们假设 Worker 项目名为 `markdown-worker`。
 
-## 3. 核心代码开发 (`src/index.js` 或 `src/index.ts`)
+## 3. 核心代码开发 (`src/index.ts` 或 `src/index.js`)
 
-Worker 的主要逻辑将在这里实现。
+Worker 的主要逻辑是接收 HTML 内容并将其转换为 Markdown。
 
 ```typescript
 // src/index.ts (示例)
 
-// 推荐使用 turndown.js 进行 HTML 到 Markdown 的转换
-// 你需要在项目中安装它: npm install turndown
+import { Hono } from 'hono';
 import TurndownService from 'turndown';
 
-export default {
-  async fetch(request: Request, env: any, ctx: any): Promise<Response> {
-    if (request.method !== 'POST') {
-      return new Response('Expected POST request', { status: 405 });
+// 定义环境变量绑定 (如果 wrangler.toml 中有配置)
+export interface Env {
+  // Example binding to KV. Learn more at https://developers.cloudflare.com/workers/runtime-apis/kv/
+  // MY_KV_NAMESPACE: KVNamespace;
+  //
+  // Example binding to Durable Object. Learn more at https://developers.cloudflare.com/workers/runtime-apis/durable-objects/
+  // MY_DURABLE_OBJECT: DurableObjectNamespace;
+  //
+  // Example binding to R2. Learn more at https://developers.cloudflare.com/workers/runtime-apis/r2/
+  // MY_BUCKET: R2Bucket;
+}
+
+// Start a Hono app
+const app = new Hono<{ Bindings: Env }>();
+
+// Initialize Turndown service
+// 可以根据需要配置 TurndownService，例如：
+// turndownService.keep(['pre', 'code']); // 保留 pre 和 code 标签
+// turndownService.addRule('strikethrough', {
+//   filter: ['del', 's', 'strike'],
+//   replacement: function (content) {
+//     return '~~' + content + '~~';
+//   }
+// });
+const turndownService = new TurndownService();
+
+// Ping endpoint for health check
+app.get("/ping", (c) => c.text("pong"));
+
+// API endpoint to convert HTML to Markdown
+app.post("/api/convert", async (c) => {
+  try {
+    const body = await c.req.json();
+    if (!body || typeof body.html !== 'string' || body.html.trim() === '') {
+      return c.json({ error: "Missing or invalid HTML content in request body" }, 400);
     }
+    const { html } = body;
 
-    try {
-      const { url } = await request.json() as { url: string };
-      if (!url) {
-        return new Response('Missing URL parameter', { status: 400 });
-      }
+    // Convert HTML to Markdown
+    const markdown = turndownService.turndown(html);
 
-      // 验证 URL (基础示例)
-      try {
-        new URL(url);
-      } catch (e) {
-        return new Response('Invalid URL format', { status: 400 });
-      }
+    // Return Markdown content
+    return c.text(markdown, 200, {
+      'Content-Type': 'text/markdown; charset=utf-8'
+    });
 
-      // 1. 获取网页 HTML 内容
-      const response = await fetch(url, {
-        headers: {
-          // 模拟浏览器 User-Agent，有些网站可能会检查它
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        }
-      });
-
-      if (!response.ok) {
-        return new Response(`Failed to fetch URL: ${response.statusText}`, { status: response.status });
-      }
-      const html = await response.text();
-
-      // 2. 初始化 Turndown 服务并转换 HTML 到 Markdown
-      const turndownService = new TurndownService();
-      // 可以根据需要配置 TurndownService，例如：
-      // turndownService.keep(['pre', 'code']); // 保留 pre 和 code 标签
-      // turndownService.addRule('strikethrough', {
-      //   filter: ['del', 's', 'strike'],
-      //   replacement: function (content) {
-      //     return '~~' + content + '~~';
-      //   }
-      // });
-      const markdown = turndownService.turndown(html);
-
-      // 3. 返回 Markdown 内容
-      return new Response(markdown, {
-        headers: {
-          'Content-Type': 'text/markdown; charset=utf-8',
-          // 可选：用于建议浏览器下载的文件名
-          // 'Content-Disposition': 'attachment; filename="page.md"'
-        },
-      });
-
-    } catch (error: any) {
-      console.error('Error processing request:', error);
-      return new Response(`Server error: ${error.message}`, { status: 500 });
+  } catch (e: any) {
+    if (e instanceof SyntaxError) { // JSON parsing error
+        return c.json({ error: "Invalid JSON in request body" }, 400);
     }
-  },
-};
+    console.error('Error in /api/convert:', e);
+    return c.json({ error: "Internal server error during Markdown conversion" }, 500);
+  }
+});
 
+export default app;
 ```
 
 **关键点**:
 
-*   **请求方法检查**: 通常 API 设计为 `POST` 请求，并在请求体中接收参数。
-*   **参数解析与校验**: 从请求体中获取 `url` 参数，并进行基础的校验。
-*   **`fetch` 外部 URL**: 使用 Worker 内置的 `fetch` API 获取目标网页内容。
-    *   注意设置合适的 `User-Agent`，某些网站可能需要。
-    *   考虑目标网站的 CORS 策略和反爬虫机制。如果遇到问题，可能需要更复杂的解决方案（如通过代理）。
-*   **Markdown 转换库**: `turndown` 是一个流行的选择。通过 `npm install turndown` (或 `yarn add turndown`) 安装，并在代码中导入和使用。
+*   **依赖安装**: 确保已安装 `turndown` 和 `hono`。
+    ```bash
+    npm install hono turndown
+    # 如果使用 TypeScript，可能还需要类型声明 (例如 @types/turndown，尽管 turndown 可能自带类型)
+    npm install --save-dev @types/turndown 
+    ```
+*   **请求方法检查**: `app.post` 确保只处理 POST 请求。
+*   **参数解析与校验**: 从请求体中获取 `html` 字符串，并进行基础的校验。
+*   **Markdown 转换**: 使用 `turndown` 库进行转换。
 *   **响应头**: 设置正确的 `Content-Type` 为 `text/markdown`。
-*   **错误处理**: 包含 `try...catch` 块来捕获和处理潜在的错误，并返回适当的 HTTP 状态码。
+*   **错误处理**: 包含 `try...catch` 块来捕获和处理潜在的错误。
 
 ## 4. 配置 `wrangler.toml`
 
 `wrangler.toml` 是 Worker 项目的配置文件。
 
 ```toml
-name = "my-markdown-worker" # 你的 Worker 名称，将成为 URL 的一部分
-main = "src/index.ts"      # 入口文件路径 (如果是 JS，则为 src/index.js)
-compatibility_date = "2023-10-30" # 使用较新的兼容性日期
+name = "markdown-worker" # 你的 Worker 名称
+main = "src/index.ts"    # Worker 入口文件
+compatibility_date = "2023-10-30" # 或更新的日期
 
-# 如果你的 Worker 需要访问 KV, Durable Objects, R2 等，在此配置
+# 如果使用了 Node.js API (turndown 可能依赖一些，但通常在 Worker 环境中，这类库会使用兼容的 API)
+# node_compat = true # 仅在确实需要 Node.js 特定 API 时开启
+
 # [vars]
 # MY_VARIABLE = "my-value"
 
-# 如果需要绑定服务 (如 KV Namespace)
 # [[kv_namespaces]]
 # binding = "MY_KV_NAMESPACE"
 # id = "your_kv_namespace_id_here"
-
-# 确保 node_compat 开启，如果使用了 Node.js API (turndown 可能依赖一些)
-node_compat = true
 ```
-
-*   **`name`**: Worker 的名称，会影响其最终的 URL (`<name>.<your-subdomain>.workers.dev`)。
-*   **`main`**: 指向你的主代码文件。
-*   **`compatibility_date`**: 指定 Worker 运行时环境的兼容性日期，建议使用较新的日期以获得最新功能和修复。
-*   **`node_compat = true`**: 如果你的依赖（如 `turndown`）使用了 Node.js 的内置模块（例如 `buffer`, `path` 等），需要启用此标志。Cloudflare Workers 提供了一些 Node.js API 的兼容性支持。
+*   **`node_compat = true`**: `turndown` 通常不需要此标志，因为它主要处理字符串和 DOM 结构（在 Worker 中是模拟的或直接传递的字符串）。但如果遇到与 Node.js 内置模块相关的错误，可以尝试启用。
 
 ## 5. 本地开发与测试
 
@@ -145,42 +137,30 @@ Wrangler 提供了本地开发服务器：
 wrangler dev
 ```
 
-这会在本地启动一个服务器 (通常是 `http://localhost:8787`)，你可以使用 `curl` 或 Postman 等工具向其发送请求进行测试。
+使用 `curl` 或 Postman 等工具向 `http://localhost:8787/api/convert` 发送 POST 请求进行测试。
 
 **示例测试 (使用 curl)**:
 
 ```bash
-curl -X POST http://localhost:8787 \
+curl -X POST http://localhost:8787/api/convert \
 -H "Content-Type: application/json" \
--d '{"url":"https://www.example.com"}'
+-d '{"html":"<h1>Title</h1><p>Some text.</p>"}'
 ```
 
 ## 6. 部署到 Cloudflare
-
-当你准备好部署 Worker 时：
 
 ```bash
 wrangler deploy
 ```
 
-部署成功后，Wrangler 会输出你的 Worker URL (例如 `https://my-markdown-worker.yourusername.workers.dev`)。插件将使用此 URL 与 Worker 通信。
-
 ## 7. 日志与监控
 
-*   **实时日志**: 在 Worker 运行时，可以使用 `wrangler tail` 查看实时日志。
-*   **Cloudflare Dashboard**: 在 Cloudflare 的仪表盘中，可以查看 Worker 的请求、错误、CPU 时间等统计信息。
+*   **实时日志**: `wrangler tail`
+*   **Cloudflare Dashboard**: 查看统计信息。
 
-## 8. 依赖管理
+## 8. 注意事项与最佳实践
 
-*   使用 `npm install <package>` 或 `yarn add <package>` 来安装依赖。
-*   Worker 的包大小有限制，尽量选择轻量级的库。
-*   `wrangler` 会将你的代码和依赖打包成一个单独的文件进行部署。
-
-## 9. 注意事项与最佳实践
-
-*   **Worker 限制**: 注意 Cloudflare Workers 的执行时间限制 (CPU 时间)、内存限制等。对于非常大的网页或复杂的转换，可能会遇到限制。
-*   **安全性**: 不要将敏感信息硬编码到 Worker 代码中。使用环境变量或 Secrets (通过 Wrangler 配置)。
-*   **错误处理**: 实现健壮的错误处理，并返回有意义的错误信息给客户端。
-*   **成本**: 了解 Cloudflare Workers 的免费套餐和付费计划，特别是当请求量增加时。
-*   **测试不同网站**: 网页结构千差万别，充分测试不同类型的网站，确保转换效果基本满意。
-*   **迭代开发**: 先实现核心功能，然后根据需要逐步添加更多配置选项或高级功能。 
+*   **Worker 限制**: 注意执行时间、内存限制等。
+*   **安全性**: Worker 代码中不应硬编码敏感信息。考虑对传入的 HTML 大小做限制。
+*   **错误处理**: 返回有意义的错误信息给客户端。
+*   **测试不同 HTML**: 测试各种结构的 HTML，确保转换效果基本满意。 

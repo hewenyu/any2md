@@ -16,8 +16,8 @@ my-extension/
 │   └── popup.js          # 弹窗逻辑
 ├── background/
 │   └── service-worker.js # 后台服务工作线程 (Manifest V3)
-└── content-scripts/      # (如果需要与页面直接交互)
-    └── content.js
+└── scripts/              # 用于注入页面的脚本
+    └── getPageHTML.js
 ```
 
 ## 2. `manifest.json` (Manifest V3 示例)
@@ -27,15 +27,15 @@ my-extension/
   "manifest_version": 3,
   "name": "网页转 Markdown 插件",
   "version": "0.1.0",
-  "description": "将当前网页内容通过 Cloudflare Worker 转换为 Markdown 并下载。",
+  "description": "获取当前网页HTML，通过 Cloudflare Worker 转换为 Markdown 并下载。",
   "permissions": [
-    "activeTab",   // 允许访问当前激活标签页的信息 (URL, 标题)
+    "activeTab",   // 允许访问当前激活标签页的信息 (URL, 标题) 并注入脚本
+    "scripting",   // 允许使用 chrome.scripting API 执行脚本
     "downloads",   // 允许插件触发文件下载
     "storage"      // 可选：用于存储配置，如 Worker URL
   ],
   "host_permissions": [
     "*://*.workers.dev/" // 替换为你的 Worker 部署的域名或更具体的路径
-    // 如果你的 Worker URL 是自定义域名，则改为相应的域名
     // 例如 "https://your-custom-domain.com/"
   ],
   "action": {
@@ -53,26 +53,41 @@ my-extension/
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [ "scripts/getPageHTML.js" ], // 如果脚本需要被页面访问，但通常 executeScript 不需要
+      "matches": [ "<all_urls>" ]
+    }
+  ]
 }
 ```
 
 **关键权限和字段**:
 
-*   **`manifest_version: 3`**: 指定使用 Manifest V3。
 *   **`permissions`**: 
-    *   `activeTab`: 核心权限，允许插件在用户点击插件图标时获取当前标签页的 URL 和标题，而无需请求宽泛的 `<all_urls>` 权限。
+    *   `activeTab`: 允许在用户操作时访问当前标签页并执行脚本。
+    *   `scripting`: **新增**，允许使用 `chrome.scripting.executeScript`。
     *   `downloads`: 允许使用 `chrome.downloads.download()` API。
-    *   `storage` (可选): 如果需要存储用户配置（如 Worker URL、默认文件名模板等），则添加此权限。
-*   **`host_permissions`**: **非常重要**。指定插件可以向哪些域名发起 `fetch` 请求。你需要将 `"*://*.workers.dev/"` 替换为你的 Cloudflare Worker 实际部署的 URL 基础。如果 Worker 使用自定义域名，也需要在这里声明。
-    *   **注意**：这里的模式需要尽可能精确，以遵循最小权限原则。例如，如果你的 Worker 完整 URL 是 `https://my-markdown-worker.username.workers.dev/api/convert`，你可以设置为 `https://my-markdown-worker.username.workers.dev/*`。
-*   **`action`**: 定义了当用户点击浏览器工具栏上的插件图标时的行为。
-    *   `default_popup`: 指定一个 HTML 文件作为弹窗界面。
-    *   `default_icon`: 指定不同尺寸的插件图标。
-*   **`background.service_worker`**: 在 Manifest V3 中，后台逻辑由 Service Worker 处理。这里指向你的 Service Worker脚本。
-*   **`icons`**: 定义插件在不同场景下（如扩展管理页面）显示的图标。
+*   **`host_permissions`**: 确保 Worker 的 URL 在此列出，允许插件向其发送 `fetch` 请求。
+*   **`web_accessible_resources`**: 通常在 `executeScript` 使用 `files` 参数时不需要将脚本列为 web 可访问资源，但如果脚本是通过其他方式注入或需要被页面自身 `fetch`，则可能需要。对于仅通过 `executeScript` 的 `func` 或 `files`（由插件内部加载）执行的脚本，此项通常不是必需的。
 
-## 3. 弹窗 (`popup/popup.html` 和 `popup/popup.js`)
+## 3. 内容提取脚本 (`scripts/getPageHTML.js`)
+
+这是一个简单的脚本，当被注入到页面中时，它会返回整个页面的 HTML。
+
+```javascript
+// scripts/getPageHTML.js
+
+// 这段代码将在目标页面的上下文中执行
+(function() {
+  // 可以选择更具体的元素，例如 document.body.outerHTML
+  // 或者只选择文章主要内容部分，如果能确定选择器的话
+  return document.documentElement.outerHTML;
+})();
+```
+
+## 4. 弹窗 (`popup/popup.html` 和 `popup/popup.js`)
 
 ### `popup.html` (示例)
 
@@ -97,7 +112,7 @@ my-extension/
 </html>
 ```
 
-### `popup.js` (示例)
+### `popup.js` (示例更新)
 
 ```javascript
 // popup.js
@@ -105,12 +120,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const convertBtn = document.getElementById('convertBtn');
   const statusEl = document.getElementById('status');
 
-  // 从 storage 中获取 Worker URL，如果不存在则使用默认值
-  // 实际项目中，可以提供一个选项页面让用户配置 Worker URL
   const DEFAULT_WORKER_URL = 'https://YOUR_WORKER_SUBDOMAIN.workers.dev/api/convert'; // !! 替换为你的 Worker URL
   let workerUrl = DEFAULT_WORKER_URL;
 
-  // 尝试从 chrome.storage.sync 获取已保存的 workerUrl (如果实现了选项页)
   if (chrome.storage && chrome.storage.sync) {
     chrome.storage.sync.get(['workerUrl'], (result) => {
       if (result.workerUrl) {
@@ -120,52 +132,58 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   convertBtn.addEventListener('click', async () => {
-    statusEl.textContent = '正在获取标签页信息...';
+    statusEl.textContent = '正在获取页面HTML...';
     convertBtn.disabled = true;
 
     try {
-      // 1. 获取当前激活的标签页
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-      if (!tab || !tab.url) {
-        statusEl.textContent = '无法获取当前标签页 URL。';
+      if (!tab || !tab.id) {
+        statusEl.textContent = '无法获取当前标签页信息。';
         convertBtn.disabled = false;
         return;
       }
 
-      const pageUrl = tab.url;
-      const pageTitle = tab.title || 'markdown_page'; // 获取页面标题作为默认文件名
+      // 1. 获取页面 HTML 内容
+      const injectionResults = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        // func: () => document.documentElement.outerHTML, // 或者使用 files
+        files: ['scripts/getPageHTML.js']
+      });
 
-      statusEl.textContent = '正在发送到服务器转换...';
+      if (chrome.runtime.lastError || !injectionResults || injectionResults.length === 0 || !injectionResults[0].result) {
+        statusEl.textContent = `无法获取页面HTML: ${chrome.runtime.lastError?.message || '无结果返回'}`;
+        convertBtn.disabled = false;
+        return;
+      }
+      
+      const pageHTML = injectionResults[0].result;
+      const pageTitle = tab.title || 'markdown_page';
+
+      statusEl.textContent = 'HTML获取成功，正在发送到服务器转换...';
 
       // 2. 向 Background Service Worker 发送消息，请求转换
-      // Manifest V3 中，网络请求等应由 Service Worker 处理
       const response = await chrome.runtime.sendMessage({
         action: 'convertToMarkdown',
-        payload: { url: pageUrl }
+        payload: { html: pageHTML } // 发送 HTML 而不是 URL
       });
 
       if (response.success && response.markdown) {
         statusEl.textContent = '转换成功，正在下载...';
-        // 3. 触发下载
         const blob = new Blob([response.markdown], { type: 'text/markdown;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        // 清理特殊字符，生成合法的文件名
+        const blobUrl = URL.createObjectURL(blob);
         const safeFilename = pageTitle.replace(/[\/\\:*?"<>|]/g, '') + '.md';
 
         chrome.downloads.download({
-          url: url,
+          url: blobUrl,
           filename: safeFilename,
-          saveAs: true // 可以让用户选择保存位置和文件名
+          saveAs: true
         }, (downloadId) => {
           if (chrome.runtime.lastError) {
             statusEl.textContent = `下载失败: ${chrome.runtime.lastError.message}`;
-            console.error('Download failed:', chrome.runtime.lastError);
           } else {
             statusEl.textContent = '下载完成!';
           }
-          // 下载完成后，可以关闭 popup 或者给出提示
-          // setTimeout(() => window.close(), 2000);
         });
       } else {
         statusEl.textContent = `转换失败: ${response.error || '未知错误'}`;
@@ -179,59 +197,47 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 ```
 
-**关键点**:
+**关键点更新**:
 
-*   **UI 交互**: `popup.html` 提供一个按钮，`popup.js` 处理按钮点击事件。
-*   **获取当前标签页**: 使用 `chrome.tabs.query({ active: true, currentWindow: true })`。
-*   **消息传递给 Service Worker**: 在 Manifest V3 中，`popup.js` 不能直接执行长时间运行的任务或复杂的 API 调用（如 `fetch` 到外部服务）。它应该向 Background Service Worker (`background/service-worker.js`) 发送消息，由 Service Worker 来处理这些任务。
-    *   `chrome.runtime.sendMessage` 用于从 `popup.js` 发送消息。
-*   **Worker URL 配置**: 示例中硬编码了 Worker URL，实际项目中建议通过 `chrome.storage.sync` 和插件的选项页面让用户配置。
-*   **下载 Markdown**: 
-    *   接收到 Service Worker 返回的 Markdown 内容后，创建一个 `Blob`。
-    *   使用 `URL.createObjectURL()` 生成一个可下载的 URL。
-    *   调用 `chrome.downloads.download()` API 触发下载。
-    *   文件名可以从页面标题生成，并进行清理以避免非法字符。
-    *   `saveAs: true` 会弹出保存对话框。
-*   **状态显示**: 通过 `statusEl` 向用户反馈操作进度和结果。
+*   **获取页面 HTML**: 使用 `chrome.scripting.executeScript` API。
+    *   `target: { tabId: tab.id }`: 指定在哪个标签页执行脚本。
+    *   `files: ['scripts/getPageHTML.js']`: 指定要注入的脚本文件。或者，可以使用 `func` 选项直接传递一个函数。
+    *   脚本执行结果会通过 Promise 返回，需要检查 `injectionResults`。
+*   **发送 HTML 到 Service Worker**: `chrome.runtime.sendMessage` 的 `payload` 现在包含 `html` 字段而不是 `url`。
 
-## 4. 后台服务 (`background/service-worker.js`)
+## 5. 后台服务 (`background/service-worker.js`)
 
-Manifest V3 使用 Service Worker 处理后台任务。
+Service Worker 现在接收 HTML 内容并将其发送给 Worker 服务。
 
 ```javascript
 // background/service-worker.js
 
-// 从 storage 中获取 Worker URL，如果不存在则使用默认值
 const DEFAULT_WORKER_URL = 'https://YOUR_WORKER_SUBDOMAIN.workers.dev/api/convert'; // !! 替换为你的 Worker URL
 let workerUrl = DEFAULT_WORKER_URL;
 
-// 插件安装或更新时，可以尝试从 storage 加载配置
 chrome.runtime.onInstalled.addListener(() => {
   if (chrome.storage && chrome.storage.sync) {
     chrome.storage.sync.get(['workerUrl'], (result) => {
       if (result.workerUrl) {
         workerUrl = result.workerUrl;
-        console.log('Worker URL loaded from storage:', workerUrl);
       }
     });
   }
 });
 
-// 监听来自 popup 或其他部分的请求
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'convertToMarkdown') {
-    const pageUrl = request.payload.url;
+    const pageHTML = request.payload.html; // 接收 HTML
 
-    // 异步处理请求
     (async () => {
       try {
-        console.log(`Requesting markdown for URL: ${pageUrl} via Worker: ${workerUrl}`);
+        console.log(`Sending HTML (length: ${pageHTML.length}) to Worker: ${workerUrl}`);
         const response = await fetch(workerUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ url: pageUrl }),
+          body: JSON.stringify({ html: pageHTML }), // 发送 HTML
         });
 
         if (!response.ok) {
@@ -243,77 +249,40 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         sendResponse({ success: true, markdown: markdown });
 
       } catch (error) {
-        console.error('Error fetching or converting markdown:', error);
+        console.error('Error posting HTML to worker or converting markdown:', error);
         sendResponse({ success: false, error: error.message });
       }
     })();
-    return true; //  重要：表明 sendResponse 将会异步调用
+    return true; // 表明 sendResponse 将会异步调用
   }
-
-  // 如果有其他 action，可以在这里处理
-  // 例如，更新 workerUrl 的消息监听
-  if (request.action === 'updateWorkerUrl') {
-    if (request.payload.newUrl) {
-      workerUrl = request.payload.newUrl;
-      if (chrome.storage && chrome.storage.sync) {
-        chrome.storage.sync.set({ workerUrl: workerUrl }, () => {
-          console.log('Worker URL updated and saved:', workerUrl);
-          sendResponse({ success: true, message: 'Worker URL updated.' });
-        });
-      } else {
-        sendResponse({ success: false, error: 'Storage API not available.' });
-      }
-      return true; // 异步
-    }
-  }
+  // ... (其他消息处理，如 updateWorkerUrl)
 });
-
-// 可选：如果需要，可以添加右键菜单项
-// chrome.runtime.onInstalled.addListener(() => {
-//   chrome.contextMenus.create({
-//     id: "convertToMarkdownContextMenu",
-//     title: "转换为 Markdown 并下载",
-//     contexts: ["page"] // 只在页面上显示
-//   });
-// });
-
-// chrome.contextMenus.onClicked.addListener((info, tab) => {
-//   if (info.menuItemId === "convertToMarkdownContextMenu" && tab) {
-//     // 这里的逻辑会和 popup.js 中的点击事件类似，但直接从这里触发
-//     // 需要获取 tab.url, tab.title 然后调用 fetch 等
-//     // 为了代码复用，可以将核心转换和下载逻辑封装成一个函数
-//     if (tab.url) {
-//       chrome.runtime.sendMessage({
-//         action: 'convertToMarkdown',
-//         payload: { url: tab.url, title: tab.title || 'markdown_page' }
-//         // 注意：这里直接发送给自己的 runtime (service worker)
-//         // 或者将 fetch 逻辑直接写在这里
-//       });
-//       // 由于没有 popup，状态反馈需要通过 chrome.notifications API
-//     }
-//   }
-// });
 
 console.log('Service Worker for Markdown Converter started.');
 ```
 
-**关键点**:
+**关键点更新**:
 
-*   **`chrome.runtime.onMessage.addListener`**: 监听来自 `popup.js` (或其他插件部分) 的消息。
-*   **`fetch` 请求**: Service Worker 可以直接执行 `fetch` 请求到在 `host_permissions` 中声明的外部服务器 (即你的 Cloudflare Worker)。
-*   **请求体**: 发送 `POST` 请求，请求体为 JSON 格式，包含 `{ "url": "..." }`。
-*   **处理响应**: 检查 `response.ok`，如果请求失败，则读取错误文本并抛出异常。成功则读取 Markdown 文本。
-*   **`sendResponse`**: 将结果 (成功或失败) 发送回消息的调用者 (`popup.js`)。
-*   **`return true;`**: 在 `onMessage` 监听器中，如果 `sendResponse` 是异步调用的（例如在 `fetch` 的 `then` 或 `async/await` 之后），则必须 `return true;` 来保持消息通道的开放，直到 `sendResponse` 被调用。
-*   **Worker URL 管理**: 同样，Worker URL 最好从 `chrome.storage` 读取，并允许用户配置。
-*   **右键菜单 (可选)**: 示例中注释掉了如何添加右键上下文菜单项 (`chrome.contextMenus`) 作为另一种触发方式。如果启用，点击菜单项的逻辑会与 `popup.js` 类似，但需要注意状态反馈（可能使用 `chrome.notifications` API）。
+*   **接收 HTML**: `onMessage` 监听器从 `request.payload.html` 获取 HTML 内容。
+*   **`fetch` 请求体**: `JSON.stringify({ html: pageHTML })` 将 HTML 内容发送给 Worker。
 
-## 5. 图标
+## 6. 打包与测试 (注意事项)
+
+*   确保 `scripts/getPageHTML.js` 文件存在于正确的位置。
+*   测试时，注意观察插件的 Service Worker 和 Popup 页面的控制台日志，以及目标页面（如果 `executeScript` 失败）的控制台。
+*   `activeTab` 权限通常足够 `executeScript` 操作当前激活的、用户交互的标签页。如果目标页面是 `chrome://` 或其他受保护的页面，`executeScript` 可能会失败。
+
+## 7. 进一步优化与功能
+
+*   **更智能的 HTML 提取**: `getPageHTML.js` 可以做得更智能，例如尝试提取文章主体内容 (如使用 Readability.js 库的逻辑，但这会增加复杂性) 而不是整个 `documentElement.outerHTML`。
+*   **用户反馈**: 如果 HTML 提取时间较长或发送的数据量较大，应提供清晰的用户反馈。
+
+## 8. 图标
 
 在 `icons/` 目录下放置不同尺寸的 PNG 图标 (例如 `icon16.png`, `icon48.png`, `icon128.png`)。
 这些图标会在浏览器工具栏、扩展管理页面等处显示。
 
-## 6. 打包与测试
+## 9. 打包与测试
 
 1.  **开发模式加载**: 
     *   打开 Chrome/Edge 浏览器的扩展管理页面 (`chrome://extensions` 或 `edge://extensions`)。
@@ -326,7 +295,7 @@ console.log('Service Worker for Markdown Converter started.');
     *   观察弹窗中的状态信息，以及浏览器控制台（包括插件的弹窗和 Service Worker 的控制台）中的日志。
 3.  **打包 (`.crx` 或 `.zip`)**: 当准备分发时，可以使用扩展管理页面中的"打包扩展程序"功能，或者手动将项目文件夹压缩为 `.zip` 文件 (对于 Chrome Web Store 等商店)。
 
-## 7. 进一步优化与功能
+## 10. 进一步优化与功能
 
 *   **选项页面 (`options.html`)**: 创建一个选项页面，允许用户配置 Cloudflare Worker URL、默认文件名格式、Markdown 转换选项等，并将这些配置保存到 `chrome.storage`。
 *   **错误处理与用户反馈**: 改进错误处理逻辑，向用户提供更清晰的错误信息和操作指引 (例如，使用 `chrome.notifications` API)。
