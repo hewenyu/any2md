@@ -1,6 +1,6 @@
 // 定义Worker API URL
-// const WORKER_API_URL = 'https://any2md.yueban.fan/api/convert';
-const WORKER_API_URL = 'http://localhost:8787/api/convert';
+const WORKER_API_URL = 'https://any2md.yueban.fan/api/convert';
+// const WORKER_API_URL = 'http://localhost:8787/api/convert';
 
 // API请求超时时间 (毫秒)
 const API_TIMEOUT = 30000; // 30秒
