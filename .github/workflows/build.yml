@@ -8,6 +8,13 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
+# 添加permissions配置，确保工作流有适当的权限
+permissions:
+  contents: write  # 需要写入权限来创建releases
+  packages: read
+  issues: read
+  pull-requests: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -36,5 +43,4 @@ jobs:
           draft: false
           prerelease: false
           generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+        # 已通过permissions块配置了适当的权限 
