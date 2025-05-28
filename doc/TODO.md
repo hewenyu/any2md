@@ -37,39 +37,43 @@
         *   manifest.json正确配置了所有必要的权限和设置。✓
         *   图标文件已准备就绪，放置在适当的目录中。✓
 
-*   **任务 2.2: (当前任务) 实现页面 HTML 内容获取逻辑**
+*   **任务 2.2: (已完成并通过测试) 实现页面 HTML 内容获取逻辑**
     *   **描述**: 在 `popup.js` 中，当用户点击按钮时：
         1.  获取当前激活的标签页 (`chrome.tabs.query`)。
         2.  使用 `chrome.scripting.executeScript` 向当前标签页注入一个简单脚本 (例如 `scripts/getPageHTML.js`) 以获取 `document.documentElement.outerHTML`。
         3.  处理 `executeScript` 的结果，获取 HTML 字符串。
     *   **前置任务**: 任务 2.1。
-    *   **测试用例**:
-        *   在普通网页上点击插件按钮，`popup.js` 能成功获取并（例如 `console.log`）输出当前页面的完整 HTML。
-        *   处理 `executeScript` 可能发生的错误（例如，在受保护页面上执行）。
-        *   `scripts/getPageHTML.js` 内容为 `(() => document.documentElement.outerHTML)();` 或类似。
+    *   **测试结果**:
+        *   在普通网页上点击插件按钮，成功获取当前页面的完整HTML内容。✓
+        *   正确处理了不同类型页面的获取操作，包括阿里云文档页面。✓
+        *   scripts/getPageHTML.js成功执行并返回页面HTML。✓
 
-*   **任务 2.3: Popup 通过 Service Worker 调用 Worker API**
+*   **任务 2.3: (已完成并通过测试) Popup 通过 Service Worker 调用 Worker API**
     *   **描述**:
         1.  `popup.js`: 获取到页面 HTML 后，通过 `chrome.runtime.sendMessage` 将 HTML 内容发送给 `service-worker.js`。
         2.  `service-worker.js`: 接收到 HTML 内容后，使用 `fetch` API 调用已部署的 Cloudflare Worker 的 `/api/convert` 端点 (POST 请求，JSON body 为 `{"html": "<CAPTURED_HTML>"}`) 。
         3.  处理 Worker API 的响应 (Markdown 文本或错误信息) 并通过 `sendResponse` 返回给 `popup.js`。
     *   **前置任务**: 任务 1.2 完成, 任务 2.2。
-    *   **测试用例**:
-        *   Service Worker 成功向 Worker API 发送包含 HTML 的请求。
-        *   Worker API 接收到 HTML 并按预期处理 (可在 Worker 端 `wrangler tail` 查看日志，或检查返回的 Markdown)。
-        *   `popup.js` 能接收到转换后的 Markdown 或错误信息。
+    *   **测试结果**:
+        *   Service Worker 成功向 Worker API (any2md.yueban.fan) 发送包含HTML的请求。✓
+        *   Worker API 正确处理请求并返回转换后的Markdown。✓
+        *   popup.js 成功接收到转换后的Markdown内容。✓
 
-*   **任务 2.4: Popup 实现 Markdown 内容下载**
+*   **任务 2.4: (已完成并通过测试) Popup 实现 Markdown 内容下载**
     *   **描述**: 在 `popup.js` 中，当从 Service Worker 接收到 Markdown 内容后，使用 `Blob`, `URL.createObjectURL`, 和 `chrome.downloads.download` API 将其作为 `.md` 文件下载。文件名可以基于页面标题生成。
     *   **前置任务**: 任务 2.3。
-    *   **测试用例**: (与之前类似，但现在是基于插件获取的HTML转换结果)
-        *   成功转换后，浏览器触发文件下载。
-        *   下载的文件内容为正确的 Markdown。
+    *   **测试结果**:
+        *   成功下载转换后的Markdown文件，文件名格式为"日期_标题.md"。✓
+        *   文件名正确处理了页面标题，移除了不允许的字符。✓
+        *   下载的文件内容为正确的Markdown文本。✓
 
-*   **任务 2.5: 完善 Popup UI、状态显示和错误处理 (插件)**
+*   **任务 2.5: (当前任务) 完善 Popup UI、状态显示和错误处理 (插件)**
     *   **描述**: 在 `popup.html` 和 `popup.js` 中提供清晰的用户反馈，包括加载状态、HTML获取状态、转换状态、成功或失败信息。
     *   **前置任务**: 任务 2.4。
-    *   **测试用例**: (与之前类似)
+    *   **测试用例**:
+        *   各种状态下显示适当的加载指示器和消息。
+        *   错误情况下显示友好的错误消息。
+        *   成功时显示清晰的成功消息。
 
 ## 阶段 3: 改进与可选功能 (与之前类似，优先级较低)
 
