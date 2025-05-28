@@ -5,23 +5,23 @@
 
 ## 阶段 1: Cloudflare Worker (Server 端) - HTML 到 Markdown 转换服务
 
-*   **任务 1.1: (已完成) Worker 端实现 `/api/convert` POST 端点接收 HTML 并转换为 Markdown**
-    *   **描述**: Worker 项目 (`markdown-worker`) 初始化完成。`/api/convert` 端点已修改为接受 POST 请求，请求体为 JSON `{"html": "<HTML_CONTENT>"}`。 `turndown` 库已安装并用于将 HTML 转换为 Markdown。`/ping` 端点工作正常。
+*   **任务 1.1: (已完成并通过测试) Worker 端实现 `/api/convert` POST 端点接收 HTML 并转换为 Markdown**
+    *   **描述**: Worker 项目 (`markdown-worker`) 初始化完成。`/api/convert` 端点已修改为接受 POST 请求，请求体为 JSON `{"html": "<HTML_CONTENT>"}`。 使用 `html-to-md` 库将 HTML 转换为 Markdown。`/ping` 端点工作正常。
     *   **前置任务**: 无。
-    *   **测试用例 (待执行)**:
-        *   `POST /api/convert` (空 body 或无效 JSON): 应返回 400 (提示 JSON 无效)。
-        *   `POST /api/convert` (body: `{"some_other_key":"value"}`): 应返回 400 (提示缺少 `html` 或无效)。
-        *   `POST /api/convert` (body: `{"html":""}` 或 `{"html":"   "}`): 应返回 400 (提示 `html` 内容无效)。
-        *   `POST /api/convert` (body: `{"html":"<h1>Title</h1><p>Some text.</p>"}`): 应返回转换后的 Markdown 文本 (`# Title\n\nSome text.`)，HTTP 状态码 200，`Content-Type` 为 `text/markdown; charset=utf-8`。
-        *   测试更复杂的 HTML 字符串（包含列表、链接、代码块等），验证转换正确性。
+    *   **测试结果**:
+        *   `POST /api/convert` (空 body 或无效 JSON): 返回 400 错误，提示 JSON 无效。✓
+        *   `POST /api/convert` (body: `{"some_other_key":"value"}`): 返回 400 错误，提示缺少 `html` 或无效。✓
+        *   `POST /api/convert` (body: `{"html":""}` 或 `{"html":"   "}`): 返回 400 错误，提示 `html` 内容无效。✓
+        *   `POST /api/convert` (body: `{"html":"<h1>Title</h1><p>Some text.</p>"}`): 返回转换后的 Markdown 文本 (`# Title\n\nSome text.`)，HTTP 状态码 200，`Content-Type` 为 `text/markdown; charset=utf-8`。✓
+        *   测试更复杂的 HTML 字符串（包含列表、链接、代码块等）: 成功转换为正确格式的 Markdown。✓
 
-*   **任务 1.2: (待执行) 完善 Worker 端错误处理和日志记录**
-    *   **描述**: 确保所有可预见的错误路径都有明确的错误响应。在 Worker 代码中适当使用 `console.log` 或 `console.error` 以便调试。
-    *   **前置任务**: 任务 1.1 测试通过。
+*   **任务 1.2: (当前任务) 完善 Worker 端错误处理和日志记录**
+    *   **描述**: 确保所有可预见的错误路径都有明确的错误响应。在 Worker 代码中适当使用 `console.log` 或 `console.error` 以便调试。添加更多的错误处理逻辑，并可能扩展 API 以提供更多功能（如版本信息、健康检查等）。
+    *   **前置任务**: 任务 1.1 测试通过 (已完成)。
     *   **测试用例**:
-        *   系统性地测试任务 1.1 中描述的各种有效和无效输入，验证错误响应符合预期。
-        *   在 `wrangler tail` 中观察日志输出是否清晰、有帮助。
-        *   测试 `turndown` 对极度损坏的 HTML 的处理（是否会导致 Worker 异常，或能否优雅返回错误）。
+        *   使用 `wrangler tail` 监控日志，确保日志输出清晰、有帮助。
+        *   测试 `html-to-md` 对极度损坏的 HTML 的处理（是否会导致 Worker 异常，或能否优雅返回错误）。
+        *   测试请求超时、请求体过大等边缘情况。
 
 ## 阶段 2: 浏览器插件 (Client 端) - 获取 HTML 并与 Worker 交互
 
@@ -48,7 +48,7 @@
         1.  `popup.js`: 获取到页面 HTML 后，通过 `chrome.runtime.sendMessage` 将 HTML 内容发送给 `service-worker.js`。
         2.  `service-worker.js`: 接收到 HTML 内容后，使用 `fetch` API 调用已部署的 Cloudflare Worker 的 `/api/convert` 端点 (POST 请求，JSON body 为 `{"html": "<CAPTURED_HTML>"}`) 。
         3.  处理 Worker API 的响应 (Markdown 文本或错误信息) 并通过 `sendResponse` 返回给 `popup.js`。
-    *   **前置任务**: 任务 1.2 测试通过, 任务 2.2。
+    *   **前置任务**: 任务 1.2 完成, 任务 2.2。
     *   **测试用例**:
         *   Service Worker 成功向 Worker API 发送包含 HTML 的请求。
         *   Worker API 接收到 HTML 并按预期处理 (可在 Worker 端 `wrangler tail` 查看日志，或检查返回的 Markdown)。
@@ -69,7 +69,7 @@
 ## 阶段 3: 改进与可选功能 (与之前类似，优先级较低)
 
 *   **任务 3.1: (可选) 插件选项页面 (配置 Worker URL)**
-*   **任务 3.2: (可选) Worker 端支持 `turndown` 选项传递** (插件发送，Worker接收并应用)
+*   **任务 3.2: (可选) Worker 端支持 `html-to-md` 选项传递** (插件发送，Worker接收并应用)
 *   **任务 3.3: (可选) 插件端支持右键菜单触发**
 *   **任务 3.4: (可选) 更智能的 HTML 内容提取** (例如，在 `getPageHTML.js` 中实现或使用库尝试提取主要内容)
 *   **任务 3.5: (可选) 国际化 (i18n)**
@@ -78,4 +78,4 @@
 ---
 
 **注意**: 
-*   `YOUR_WORKER_SUBDOMAIN.workers.dev/api/convert` 或 `https://<worker-url>` 需要替换为实际部署的 Worker 地址。 
+*   Worker URL: `https://markdown-worker.flytogh.workers.dev/api/convert` 
