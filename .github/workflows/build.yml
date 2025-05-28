@@ -12,7 +12,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
       
       - name: Build Extension Package
         run: |
@@ -20,7 +21,7 @@ jobs:
           zip -r ../any2md-extension.zip ./*
       
       - name: Upload Extension Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: any2md-extension
           path: any2md-extension.zip
