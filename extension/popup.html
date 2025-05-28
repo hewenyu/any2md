@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>网页转Markdown</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      width: 320px;
+      padding: 15px;
+      background-color: #f9f9f9;
+      margin: 0;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    .header img {
+      width: 24px;
+      height: 24px;
+      margin-right: 10px;
+    }
+    h1 {
+      font-size: 18px;
+      color: #333;
+      margin: 0;
+    }
+    .button-container {
+      margin: 15px 0;
+    }
+    button {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      background-color: #4285f4;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background-color 0.2s;
+    }
+    button:hover {
+      background-color: #3367d6;
+    }
+    button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+    .retry-btn {
+      background-color: #34a853;
+      margin-top: 10px;
+      display: none;
+    }
+    .retry-btn:hover {
+      background-color: #2d9649;
+    }
+    
+    /* 进度显示 */
+    .progress-container {
+      margin: 15px 0;
+      display: none;
+    }
+    .progress-steps {
+      display: flex;
+      justify-content: space-between;
+      position: relative;
+      margin-bottom: 30px;
+    }
+    .progress-steps:before {
+      content: '';
+      position: absolute;
+      top: 10px;
+      left: 10%;
+      width: 80%;
+      height: 2px;
+      background-color: #e0e0e0;
+      z-index: 0;
+    }
+    .step {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background-color: #e0e0e0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      z-index: 1;
+    }
+    .step.active {
+      background-color: #4285f4;
+      color: white;
+    }
+    .step.completed {
+      background-color: #34a853;
+      color: white;
+    }
+    .step-label {
+      position: absolute;
+      top: 25px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 11px;
+      white-space: nowrap;
+      color: #666;
+    }
+    .step-icon {
+      font-size: 12px;
+    }
+    
+    .current-action {
+      text-align: center;
+      font-size: 13px;
+      color: #666;
+      margin-top: 10px;
+    }
+    
+    /* 状态信息 */
+    #status {
+      margin-top: 15px;
+      padding: 12px;
+      border-radius: 4px;
+      font-size: 13px;
+      display: none;
+    }
+    .success {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .error {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    .warning {
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
+    }
+    .info {
+      background-color: #e2f3fd;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+    
+    /* 页面信息 */
+    .page-info {
+      margin-top: 10px;
+      font-size: 12px;
+      color: #666;
+      border-top: 1px solid #eee;
+      padding-top: 10px;
+    }
+    
+    /* 加载动画 */
+    .loading {
+      display: none;
+      text-align: center;
+      margin: 10px 0;
+    }
+    .loading:after {
+      content: ' .';
+      animation: dots 1.5s steps(5, end) infinite;
+    }
+    @keyframes dots {
+      0%, 20% { color: rgba(0,0,0,0); text-shadow: .25em 0 0 rgba(0,0,0,0), .5em 0 0 rgba(0,0,0,0); }
+      40% { color: #333; text-shadow: .25em 0 0 rgba(0,0,0,0), .5em 0 0 rgba(0,0,0,0); }
+      60% { text-shadow: .25em 0 0 #333, .5em 0 0 rgba(0,0,0,0); }
+      80%, 100% { text-shadow: .25em 0 0 #333, .5em 0 0 #333; }
+    }
+    
+    /* 版本信息 */
+    .footer {
+      text-align: center;
+      font-size: 11px;
+      color: #999;
+      margin-top: 15px;
+      border-top: 1px solid #eee;
+      padding-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img src="images/favicon-32x32.png" alt="Logo">
+    <h1>网页转Markdown</h1>
+  </div>
+  
+  <div class="button-container">
+    <button id="convertBtn">转换当前网页</button>
+    <button id="retryBtn" class="retry-btn">重试</button>
+  </div>
+  
+  <div id="progressContainer" class="progress-container">
+    <div class="progress-steps">
+      <div id="step1" class="step">
+        <span class="step-icon">1</span>
+        <span class="step-label">获取HTML</span>
+      </div>
+      <div id="step2" class="step">
+        <span class="step-icon">2</span>
+        <span class="step-label">转换处理</span>
+      </div>
+      <div id="step3" class="step">
+        <span class="step-icon">3</span>
+        <span class="step-label">下载</span>
+      </div>
+    </div>
+    <div id="currentAction" class="current-action"></div>
+  </div>
+  
+  <div id="loading" class="loading">正在处理</div>
+  
+  <div id="status"></div>
+  
+  <div id="pageInfo" class="page-info" style="display: none;">
+    <div id="pageTitle"></div>
+    <div id="pageSize"></div>
+  </div>
+  
+  <div class="footer">
+    Any2MD v1.0.0 | 将网页轻松转为Markdown
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html> 

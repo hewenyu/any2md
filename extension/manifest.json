@@ -1,0 +1,45 @@
+{
+  "manifest_version": 3,
+  "name": "网页转Markdown",
+  "version": "1.0.0",
+  "description": "将当前网页内容转换为Markdown格式并下载",
+  "author": "hewenyu",
+  "icons": {
+    "16": "images/favicon-16x16.png",
+    "32": "images/favicon-32x32.png",
+    "48": "images/android-chrome-192x192.png",
+    "128": "images/android-chrome-512x512.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "images/favicon-16x16.png",
+      "32": "images/favicon-32x32.png",
+      "48": "images/android-chrome-192x192.png",
+      "128": "images/android-chrome-512x512.png"
+    }
+  },
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "downloads",
+    "contextMenus",
+    "notifications"
+  ],
+  "host_permissions": [
+    "https://any2md.yueban.fan/*"
+  ],
+  "background": {
+    "service_worker": "service-worker.js",
+    "type": "module"
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+M",
+        "mac": "Command+Shift+M"
+      },
+      "description": "打开转换页面"
+    }
+  }
+} 
