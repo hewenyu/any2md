@@ -22,5 +22,8 @@ openapi.delete("/api/tasks/:taskSlug", TaskDelete);
 // You may also register routes for non OpenAPI directly on Hono
 // app.get('/test', (c) => c.text('Hono!'))
 
+// Add the /ping route
+app.get("/ping", (c) => c.text("pong"));
+
 // Export the Hono app
 export default app;
