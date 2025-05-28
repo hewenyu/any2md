@@ -1,0 +1,6 @@
+name = "markdown-worker"
+main = "src/index.ts"
+compatibility_date = "2023-10-30"
+
+# 启用 Node.js 兼容模式，以支持 node-html-markdown 库使用的 Node.js API
+node_compat = true 
