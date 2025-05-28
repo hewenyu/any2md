@@ -1,5 +1,5 @@
 // 定义Worker API URL
-const WORKER_API_URL = 'https://markdown-worker.flytogh.workers.dev/api/convert';
+const WORKER_API_URL = 'https://any2md.yueban.fan/api/convert';
 
 // 监听来自popup.js的消息
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {

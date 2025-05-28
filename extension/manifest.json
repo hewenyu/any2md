@@ -4,16 +4,16 @@
   "version": "1.0.0",
   "description": "将当前网页内容转换为Markdown格式并下载",
   "icons": {
-    "16": "images/icon16.png",
-    "48": "images/icon48.png",
-    "128": "images/icon128.png"
+    "16": "images/favicon-16x16.png",
+    "32": "images/favicon-32x32.png",
+    "192": "images/android-chrome-192x192.png"
   },
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
-      "16": "images/icon16.png",
-      "48": "images/icon48.png",
-      "128": "images/icon128.png"
+      "16": "images/favicon-16x16.png",
+      "32": "images/favicon-32x32.png",
+      "192": "images/android-chrome-192x192.png"
     }
   },
   "permissions": [
@@ -22,7 +22,7 @@
     "downloads"
   ],
   "host_permissions": [
-    "https://markdown-worker.flytogh.workers.dev/*"
+    "https://any2md.yueban.fan/*"
   ],
   "background": {
     "service_worker": "service-worker.js",
