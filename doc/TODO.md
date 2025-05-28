@@ -5,42 +5,34 @@
 
 ## 阶段 1: Cloudflare Worker (Server 端) - HTML 到 Markdown 转换服务
 
-*   **任务 1.1: (已部分完成，需调整) 初始化 Worker 项目并实现 `/api/convert` POST 端点**
-    *   **描述**: 使用 Wrangler CLI 和 Hono 框架。确保 Worker 项目 (`markdown-worker`) 已初始化。修改 `/api/convert` 端点，使其接受 POST 请求，请求体为 JSON `{"html": "<HTML_CONTENT>"}`。如果 `html` 字段缺失或无效，返回 400 错误。
-    *   **前置任务**: 无 (或基于之前的初始化)。
-    *   **测试用例**:
-        *   部署 Worker。
-        *   `POST /api/convert` (空 body 或无效 JSON): 返回 400 (提示 JSON 无效)。
-        *   `POST /api/convert` (body: `{"some_other_key":"value"}`): 返回 400 (提示缺少 `html` 或无效)。
-        *   `POST /api/convert` (body: `{"html":""}` 或 `{"html":"   "}`): 返回 400 (提示 `html` 内容无效)。
-        *   `POST /api/convert` (body: `{"html":"<h1>Test</h1>"}`): （暂时）返回一个成功的占位符响应或直接进入下一步的转换逻辑。
-        *   实现 `/ping` GET 端点返回 `pong` (此部分已完成并通过测试)。
+*   **任务 1.1: (已完成) Worker 端实现 `/api/convert` POST 端点接收 HTML 并转换为 Markdown**
+    *   **描述**: Worker 项目 (`markdown-worker`) 初始化完成。`/api/convert` 端点已修改为接受 POST 请求，请求体为 JSON `{"html": "<HTML_CONTENT>"}`。 `turndown` 库已安装并用于将 HTML 转换为 Markdown。`/ping` 端点工作正常。
+    *   **前置任务**: 无。
+    *   **测试用例 (待执行)**:
+        *   `POST /api/convert` (空 body 或无效 JSON): 应返回 400 (提示 JSON 无效)。
+        *   `POST /api/convert` (body: `{"some_other_key":"value"}`): 应返回 400 (提示缺少 `html` 或无效)。
+        *   `POST /api/convert` (body: `{"html":""}` 或 `{"html":"   "}`): 应返回 400 (提示 `html` 内容无效)。
+        *   `POST /api/convert` (body: `{"html":"<h1>Title</h1><p>Some text.</p>"}`): 应返回转换后的 Markdown 文本 (`# Title\n\nSome text.`)，HTTP 状态码 200，`Content-Type` 为 `text/markdown; charset=utf-8`。
+        *   测试更复杂的 HTML 字符串（包含列表、链接、代码块等），验证转换正确性。
 
-*   **任务 1.2: (核心) 实现 HTML 到 Markdown 的转换逻辑**
-    *   **描述**: 在 `/api/convert` 端点中，当收到有效的 `html` 参数后，使用 `turndown` 库将其转换为 Markdown 字符串。确保 `turndown` 已安装在 Worker项目中。
-    *   **前置任务**: 任务 1.1 完成。
-    *   **测试用例**:
-        *   `POST /api/convert` (body: `{"html":"<h1>Title</h1><p>Some text.</p>"}`): 返回转换后的 Markdown 文本 (`# Title\n\nSome text.`)，HTTP 状态码 200，`Content-Type` 为 `text/markdown; charset=utf-8`。
-        *   测试包含各种 HTML 元素（标题、段落、列表、链接、代码块、表格等）的简单 HTML 字符串，验证转换基本正确。
-        *   如果 `turndown` 转换过程本身出错（不太常见，但可能发生于极度损坏的HTML），应返回 500 错误。
-
-*   **任务 1.3: 完善错误处理和日志记录 (Worker)**
+*   **任务 1.2: (待执行) 完善 Worker 端错误处理和日志记录**
     *   **描述**: 确保所有可预见的错误路径都有明确的错误响应。在 Worker 代码中适当使用 `console.log` 或 `console.error` 以便调试。
-    *   **前置任务**: 任务 1.2。
+    *   **前置任务**: 任务 1.1 测试通过。
     *   **测试用例**:
-        *   系统性地测试任务 1.1 和 1.2 中描述的各种有效和无效输入，验证错误响应符合预期。
-        *   在 `wrangler tail` 中观察日志输出。
+        *   系统性地测试任务 1.1 中描述的各种有效和无效输入，验证错误响应符合预期。
+        *   在 `wrangler tail` 中观察日志输出是否清晰、有帮助。
+        *   测试 `turndown` 对极度损坏的 HTML 的处理（是否会导致 Worker 异常，或能否优雅返回错误）。
 
 ## 阶段 2: 浏览器插件 (Client 端) - 获取 HTML 并与 Worker 交互
 
-*   **任务 2.1: (已部分完成，需调整) 初始化插件项目并设置 `manifest.json`**
+*   **任务 2.1: 初始化插件项目并设置 `manifest.json`**
     *   **描述**: 创建浏览器插件的项目结构。更新 `manifest.json` (V3)，包含基本信息、`activeTab`, `scripting`, `downloads` 权限，以及指向 `popup.html` 的 `action`。确保 `host_permissions` 允许访问 Worker API。
-    *   **前置任务**: 无 (可与阶段 1 并行，但逻辑上依赖 Worker API 定义)。
+    *   **前置任务**: 无。
     *   **测试用例**:
         *   插件能被浏览器加载。
         *   插件图标显示。点击图标能打开 `popup.html`。
 
-*   **任务 2.2: (核心) 实现页面 HTML 内容获取逻辑**
+*   **任务 2.2: 实现页面 HTML 内容获取逻辑**
     *   **描述**: 在 `popup.js` 中，当用户点击按钮时：
         1.  获取当前激活的标签页 (`chrome.tabs.query`)。
         2.  使用 `chrome.scripting.executeScript` 向当前标签页注入一个简单脚本 (例如 `scripts/getPageHTML.js`) 以获取 `document.documentElement.outerHTML`。
@@ -51,12 +43,12 @@
         *   处理 `executeScript` 可能发生的错误（例如，在受保护页面上执行）。
         *   `scripts/getPageHTML.js` 内容为 `(() => document.documentElement.outerHTML)();` 或类似。
 
-*   **任务 2.3: (核心) Popup 通过 Service Worker 调用 Worker API**
+*   **任务 2.3: Popup 通过 Service Worker 调用 Worker API**
     *   **描述**:
         1.  `popup.js`: 获取到页面 HTML 后，通过 `chrome.runtime.sendMessage` 将 HTML 内容发送给 `service-worker.js`。
         2.  `service-worker.js`: 接收到 HTML 内容后，使用 `fetch` API 调用已部署的 Cloudflare Worker 的 `/api/convert` 端点 (POST 请求，JSON body 为 `{"html": "<CAPTURED_HTML>"}`) 。
         3.  处理 Worker API 的响应 (Markdown 文本或错误信息) 并通过 `sendResponse` 返回给 `popup.js`。
-    *   **前置任务**: 任务 1.3 (Worker API 可用), 任务 2.2。
+    *   **前置任务**: 任务 1.2 测试通过, 任务 2.2。
     *   **测试用例**:
         *   Service Worker 成功向 Worker API 发送包含 HTML 的请求。
         *   Worker API 接收到 HTML 并按预期处理 (可在 Worker 端 `wrangler tail` 查看日志，或检查返回的 Markdown)。
