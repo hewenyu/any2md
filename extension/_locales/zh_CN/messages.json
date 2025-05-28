@@ -1,0 +1,74 @@
+{
+  "appName": {
+    "message": "网页转Markdown",
+    "description": "扩展的名称"
+  },
+  "appDesc": {
+    "message": "将当前网页内容转换为Markdown格式并下载",
+    "description": "扩展的描述"
+  },
+  "convertButtonText": {
+    "message": "转换",
+    "description": "转换按钮文本"
+  },
+  "convertingMessage": {
+    "message": "正在转换...",
+    "description": "转换过程中的提示"
+  },
+  "convertSuccessMessage": {
+    "message": "转换成功！Markdown文件已下载",
+    "description": "转换成功的提示"
+  },
+  "convertErrorMessage": {
+    "message": "转换失败: $ERROR$",
+    "description": "转换失败的提示",
+    "placeholders": {
+      "error": {
+        "content": "$1",
+        "example": "网络错误"
+      }
+    }
+  },
+  "convertWholePageMenu": {
+    "message": "将整个页面转换为Markdown",
+    "description": "右键菜单项 - 转换整页"
+  },
+  "convertSelectionMenu": {
+    "message": "将选定文本转换为Markdown",
+    "description": "右键菜单项 - 转换选中文本"
+  },
+  "selectRegionsMenu": {
+    "message": "选择页面区域进行转换",
+    "description": "右键菜单项 - 选择区域"
+  },
+  "selectRegionsTitle": {
+    "message": "选择要转换的区域",
+    "description": "区域选择模式标题"
+  },
+  "selectRegionsDescription": {
+    "message": "鼠标悬停在页面元素上会高亮显示，点击可以选择或取消选择该区域。",
+    "description": "区域选择模式说明"
+  },
+  "selectedCountText": {
+    "message": "已选择 $COUNT$ 个区域",
+    "description": "已选区域计数",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "convertSelectedButton": {
+    "message": "转换选中区域",
+    "description": "转换选中区域按钮"
+  },
+  "cancelSelectionButton": {
+    "message": "取消选择",
+    "description": "取消选择按钮"
+  },
+  "openCommandDesc": {
+    "message": "打开转换页面",
+    "description": "键盘快捷键描述"
+  }
+} 

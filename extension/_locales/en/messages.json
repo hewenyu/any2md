@@ -1,0 +1,74 @@
+{
+  "appName": {
+    "message": "Web to Markdown",
+    "description": "The name of the extension"
+  },
+  "appDesc": {
+    "message": "Convert web page content to Markdown format and download",
+    "description": "The description of the extension"
+  },
+  "convertButtonText": {
+    "message": "Convert",
+    "description": "Text on the convert button"
+  },
+  "convertingMessage": {
+    "message": "Converting...",
+    "description": "Message shown during conversion"
+  },
+  "convertSuccessMessage": {
+    "message": "Conversion successful! Markdown file has been downloaded",
+    "description": "Message shown after successful conversion"
+  },
+  "convertErrorMessage": {
+    "message": "Conversion failed: $ERROR$",
+    "description": "Message shown after failed conversion",
+    "placeholders": {
+      "error": {
+        "content": "$1",
+        "example": "Network error"
+      }
+    }
+  },
+  "convertWholePageMenu": {
+    "message": "Convert entire page to Markdown",
+    "description": "Context menu item - convert whole page"
+  },
+  "convertSelectionMenu": {
+    "message": "Convert selected text to Markdown",
+    "description": "Context menu item - convert selection"
+  },
+  "selectRegionsMenu": {
+    "message": "Select page regions to convert",
+    "description": "Context menu item - select regions"
+  },
+  "selectRegionsTitle": {
+    "message": "Select regions to convert",
+    "description": "Region selection mode title"
+  },
+  "selectRegionsDescription": {
+    "message": "Hover over page elements to highlight them. Click to select or unselect a region.",
+    "description": "Region selection mode description"
+  },
+  "selectedCountText": {
+    "message": "Selected $COUNT$ regions",
+    "description": "Selected regions count",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "convertSelectedButton": {
+    "message": "Convert Selected",
+    "description": "Convert selected regions button"
+  },
+  "cancelSelectionButton": {
+    "message": "Cancel",
+    "description": "Cancel selection button"
+  },
+  "openCommandDesc": {
+    "message": "Open conversion popup",
+    "description": "Keyboard shortcut description"
+  }
+} 
