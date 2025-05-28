@@ -1,12 +1,8 @@
 import { Hono } from "hono";
-import { NodeHtmlMarkdown } from 'node-html-markdown'; // 使用 node-html-markdown 替代 turndown
+import htmlToMd from 'html-to-md'; // 正确导入 html-to-md 库
 
 // Start a Hono app
 const app = new Hono<{ Bindings: Env }>();
-
-// 初始化 NodeHtmlMarkdown 转换器
-// 可以根据需要配置选项: https://github.com/crosstype/node-html-markdown#configuration
-const nhm = new NodeHtmlMarkdown();
 
 // Add the /ping route
 app.get("/ping", (c) => c.text("pong"));
@@ -24,7 +20,7 @@ app.post("/api/convert", async (c) => {
 		const { html } = body;
 
 		// 将 HTML 转换为 Markdown
-		const markdown = nhm.translate(html);
+		const markdown = htmlToMd(html);
 
 		return c.text(markdown, 200, {
 			'Content-Type': 'text/markdown; charset=utf-8'
