@@ -1,9 +1,10 @@
 {
   "manifest_version": 3,
-  "name": "网页转Markdown",
-  "version": "1.0.0",
-  "description": "将当前网页内容转换为Markdown格式并下载",
+  "name": "__MSG_appName__",
+  "version": "1.0.1",
+  "description": "__MSG_appDesc__",
   "author": "hewenyu",
+  "default_locale": "zh_CN",
   "icons": {
     "16": "images/favicon-16x16.png",
     "32": "images/favicon-32x32.png",
@@ -39,7 +40,7 @@
         "default": "Ctrl+Shift+M",
         "mac": "Command+Shift+M"
       },
-      "description": "打开转换页面"
+      "description": "__MSG_openCommandDesc__"
     }
   }
 } 
