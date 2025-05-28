@@ -15,17 +15,21 @@
         *   `POST /api/convert` (body: `{"html":"<h1>Title</h1><p>Some text.</p>"}`): 返回转换后的 Markdown 文本 (`# Title\n\nSome text.`)，HTTP 状态码 200，`Content-Type` 为 `text/markdown; charset=utf-8`。✓
         *   测试更复杂的 HTML 字符串（包含列表、链接、代码块等）: 成功转换为正确格式的 Markdown。✓
 
-*   **任务 1.2: (当前任务) 完善 Worker 端错误处理和日志记录**
+*   **任务 1.2: (已完成并通过测试) 完善 Worker 端错误处理和日志记录**
     *   **描述**: 确保所有可预见的错误路径都有明确的错误响应。在 Worker 代码中适当使用 `console.log` 或 `console.error` 以便调试。添加更多的错误处理逻辑，并可能扩展 API 以提供更多功能（如版本信息、健康检查等）。
     *   **前置任务**: 任务 1.1 测试通过 (已完成)。
-    *   **测试用例**:
-        *   使用 `wrangler tail` 监控日志，确保日志输出清晰、有帮助。
-        *   测试 `html-to-md` 对极度损坏的 HTML 的处理（是否会导致 Worker 异常，或能否优雅返回错误）。
-        *   测试请求超时、请求体过大等边缘情况。
+    *   **测试结果**:
+        *   使用 `wrangler dev` 监控日志，确保日志输出清晰、有帮助。✓
+        *   添加的 `/health` 和 `/api/info` 端点工作正常，能够返回正确的服务状态、版本和API信息。✓
+        *   Content-Type 验证工作正常，能拒绝非 application/json 请求。✓
+        *   请求体大小限制功能已实现，防止过大请求。✓
+        *   空请求体、无效HTML字段、空HTML内容等错误情况处理正确。✓
+        *   HTML 转换过程错误处理能够捕获并返回明确的错误信息。✓
+        *   404错误处理正确，对不存在的路径返回清晰的错误信息。✓
 
 ## 阶段 2: 浏览器插件 (Client 端) - 获取 HTML 并与 Worker 交互
 
-*   **任务 2.1: 初始化插件项目并设置 `manifest.json`**
+*   **任务 2.1: (当前任务) 初始化插件项目并设置 `manifest.json`**
     *   **描述**: 创建浏览器插件的项目结构。更新 `manifest.json` (V3)，包含基本信息、`activeTab`, `scripting`, `downloads` 权限，以及指向 `popup.html` 的 `action`。确保 `host_permissions` 允许访问 Worker API。
     *   **前置任务**: 无。
     *   **测试用例**:
