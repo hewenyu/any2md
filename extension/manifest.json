@@ -27,8 +27,7 @@
     "notifications"
   ],
   "host_permissions": [
-    "https://any2md.yueban.fan/*",
-    "http://localhost:8787/*"
+    "https://any2md.yueban.fan/*"
   ],
   "background": {
     "service_worker": "service-worker.js",
